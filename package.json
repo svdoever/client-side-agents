@@ -1,0 +1,20 @@
+{
+  "name": "client-side-agents",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@azure/ai-agents": "^1.0.0-beta.2",
+    "@azure/ai-projects": "^1.0.0-beta.7",
+    "@azure/identity": "^4.10.0"
+  }
+}

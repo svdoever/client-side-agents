@@ -1,0 +1,82 @@
+import { AgentsClient, type Agent, type PagedAsyncIterableIterator } from "@azure/ai-agents";
+import { endpoint, clientId, tenantId } from "./settings";
+import { InteractiveBrowserCredential, type InteractiveBrowserCredentialInBrowserOptions } from "@azure/identity";
+import { AIProjectClient } from "@azure/ai-projects";
+// Authentication state and credential cache
+const authState = {
+  isAuthenticated: false,
+  isAuthenticating: false,
+  credential: null as InteractiveBrowserCredential | null
+};
+
+// Listen for auth completion messages from the callback page
+window.addEventListener('message', (event) => {
+  if (event.origin === window.location.origin && event.data === 'auth-completed') {
+    authState.isAuthenticated = true;
+    authState.isAuthenticating = false;
+    console.log("Authentication completed successfully");
+  }
+});
+
+export function setupShowAgents(button: HTMLButtonElement, outputElement: HTMLDivElement) {
+  const initializeCredential = async (): Promise<InteractiveBrowserCredential> => {
+    if (authState.credential) {
+      return authState.credential;
+    }
+    const options: InteractiveBrowserCredentialInBrowserOptions = {
+      clientId,
+      authorityHost: `https://login.microsoftonline.com/${tenantId}`,
+      redirectUri: window.location.origin + "/aiproject-auth-callback.html",
+    };
+    authState.credential = new InteractiveBrowserCredential(options);
+    return authState.credential;
+  };
+
+  const showAgents = async (outputElement: HTMLDivElement) => {
+    try {
+      outputElement.innerHTML = "<p>Authenticating and loading agents...</p>";
+      const credential = await initializeCredential();
+
+      if (!authState.isAuthenticated && !authState.isAuthenticating) {
+        authState.isAuthenticating = true;
+        try {
+          await credential.getToken("https://cognitiveservices.azure.com/.default");
+          authState.isAuthenticated = true;
+          authState.isAuthenticating = false;
+        } catch (error) {
+          // Likely a redirect or popup, so exit and wait for callback
+          console.log("Authentication flow started, waiting for redirect...");
+          return;
+        }
+      }
+
+      if (!authState.isAuthenticated) {
+        outputElement.innerHTML = "<p>Authentication in progress... Please complete the login process.</p>";
+        return;
+      }
+
+      let agentsClient: AgentsClient;
+      if (true) {
+        const projectClient = AIProjectClient.fromEndpoint(endpoint, credential, {});
+        agentsClient = projectClient.agents;
+      } else {
+        agentsClient = new AgentsClient(endpoint, credential, {});  
+      }
+
+      const listOfAgentsInterator: PagedAsyncIterableIterator<Agent> = agentsClient.listAgents({ limit: 100, order: "asc" });
+      const page = await listOfAgentsInterator.byPage().next();
+      const listOfAgents: Agent[] = page.value || [];
+      if (!listOfAgents || listOfAgents.length === 0) {
+        outputElement.innerHTML = "<p>No agents found.</p>";
+        return;
+      }
+      const agentNames: string[] = listOfAgents.map((agent) => agent.name || "Unnamed Agent");
+      const agentNamesHtmlString = agentNames.map((name) => `<li>${name}</li>`).join("");
+      outputElement.innerHTML = `<h4>Agents:</h4><ul>${agentNamesHtmlString}</ul>`;
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+      outputElement.innerHTML = `<pre>Error fetching agents: ${error instanceof Error ? error.message : error}</pre>`;
+    }
+  };
+  button.addEventListener("click", () => showAgents(outputElement));
+}

@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Callback</title>
+  <script type="text/javascript">
+    window.opener.postMessage(window.location.href, window.location.origin);
+    window.close();
+  </script>
+</head>
+<body>
+  <p>Authentication completed. You can close this window.</p>
+</body>
+</html>
