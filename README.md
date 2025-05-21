@@ -1,0 +1,1 @@
+Simple sample to showcase accessinbg the @azure/ai-agents library from the browser to control everything agents in the Azure AI Foundry Agent Service.
